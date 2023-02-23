@@ -96,7 +96,7 @@ ui <-
              background = "url('https://sdp.cepr.harvard.edu/sites/hwpi.harvard.edu/files/styles/os_files_xxlarge/public/sdp/files/sdp_logo.png?m=1515605022&itok=svSqwQf_')  no-repeat bottom fixed;",
              fluidPage(tags$style(type = "text/css",
                                   ".shiny-output-error { visibility: hidden; }",
-                                  ".shiny-output-error:before { visibility: visible; content: 'Loading...the data is coming :) or the chosen filters produced a dataset with no user data'; }"),
+                                  ".shiny-output-error:before { visibility: visible; content: 'Loading...the data is coming :) or the chosen filters produced a dataset with no applicable student data'; }"),
                        tags$head(
                          tags$script(
                            HTML("
@@ -125,10 +125,7 @@ ui <-
                                        uiOutput("district"),
                                        uiOutput("location"),
                                        uiOutput("size"),
-                                       uiOutput("school"),
-                                       helpText(HTML("<b>", "Data Display Info →", "</b>", '<br/>',
-                                                     "- Hover over the charts to view stats", '<br/>',
-                                                     "- Press the **camera** icon to download a chart."))),
+                                       uiOutput("school")),
                           mainPanel(
                             tabsetPanel(type = "tabs",
                                         tabPanel("Highlights", 
@@ -499,17 +496,28 @@ server =
               mutate(Cohort = as.factor(Cohort),
                      all = "Overall")
             
-            ggplotly(
-              ggplot(hrs, aes(y = dual_enrl_hours, x = Cohort, fill = Cohort)) + 
-                geom_boxplot(alpha = 0.65) +
-                labs(title = paste0("Dual Enrollment Hours* | ", input$Facet, "\n*Among students who took DE courses"), 
-                     y = "Hours", x = "") +
-                theme(legend.position = "none") +
-                scale_y_continuous(breaks = c(seq(0, 100, 20), 200, 400, max(hrs$dual_enrl_hours)),
-                                   limits = c(min(hrs$dual_enrl_hours), max(hrs$dual_enrl_hours))) +
-                facet_wrap(~ all) +
-                scale_fill_viridis(discrete = T)) %>% 
-              layout(title = list(y = .925, xref = "plot"), margin = list(t = 100))
+            if (nrow(hrs) == 0) {
+              
+              ggplot() + 
+                labs(title = "No students participated in DE",
+                     caption = "none") +
+                theme(panel.background = element_blank())
+              
+            } else {
+              
+              ggplotly(
+                ggplot(hrs, aes(y = dual_enrl_hours, x = Cohort, fill = Cohort)) + 
+                  geom_boxplot(alpha = 0.65) +
+                  labs(title = paste0("Dual Enrollment Hours* | ", input$Facet, "\n*Among students who took DE courses"), 
+                       y = "Hours", x = "") +
+                  theme(legend.position = "none") +
+                  scale_y_continuous(breaks = c(seq(0, 100, 20), 200, 400, max(hrs$dual_enrl_hours)),
+                                     limits = c(min(hrs$dual_enrl_hours), max(hrs$dual_enrl_hours))) +
+                  facet_wrap(~ all) +
+                  scale_fill_viridis(discrete = T)) %>% 
+                layout(title = list(y = .925, xref = "plot"), margin = list(t = 100))
+              
+            }
             
           } else {
             
@@ -528,23 +536,34 @@ server =
                      facet = !!sym(input$Facet)) %>% 
               filter(facet %in% vizBY$facet)
             
-            ggplotly(
-              ggplot(hrs, aes(y = dual_enrl_hours, 
-                              x = fct_rev(reorder_within(facet, dual_enrl_hours, Cohort)), 
-                              fill = fct_rev(reorder_within(facet, dual_enrl_hours, Cohort)))) + 
-                geom_boxplot(alpha = 0.65) +
-                labs(title = ifelse(input$Facet == "School", paste0("Dual Enrollment Hours* | ", input$Facet, " (Top 8 by DE %)",
-                                                                    "\n*Among students who took DE courses"),
-                                    paste0("Dual Enrollment Hours* | ", input$Facet, "\n*Among students who took DE courses")), 
-                     y = "Hours", x = "") +
-                theme(legend.position = "none", axis.text.x = element_text(angle = 35)) +
-                scale_y_continuous(breaks = c(seq(0, 100, 20), 200, 400, max(hrs$dual_enrl_hours)),
-                                   limits = c(min(hrs$dual_enrl_hours), max(hrs$dual_enrl_hours))) +
-                scale_x_reordered() +
-                facet_wrap(~ Cohort, scales = "free_x") +
-                scale_fill_viridis(discrete = T), 
-              tooltip = c("tooltip")) %>% 
-              layout(title = list(y = .925, xref = "plot"), margin = list(t = 100))
+            if (nrow(hrs) == 0) {
+              
+              ggplot() + 
+                labs(title = "No students participated in DE",
+                     caption = "none") +
+                theme(panel.background = element_blank())
+              
+            } else {
+              
+              ggplotly(
+                ggplot(hrs, aes(y = dual_enrl_hours, 
+                                x = fct_rev(reorder_within(facet, dual_enrl_hours, Cohort)), 
+                                fill = fct_rev(reorder_within(facet, dual_enrl_hours, Cohort)))) + 
+                  geom_boxplot(alpha = 0.65) +
+                  labs(title = ifelse(input$Facet == "School", paste0("Dual Enrollment Hours* | ", input$Facet, " (Top 8 by DE %)",
+                                                                      "\n*Among students who took DE courses"),
+                                      paste0("Dual Enrollment Hours* | ", input$Facet, "\n*Among students who took DE courses")), 
+                       y = "Hours", x = "") +
+                  theme(legend.position = "none", axis.text.x = element_text(angle = 35)) +
+                  scale_y_continuous(breaks = c(seq(0, 100, 20), 200, 400, max(hrs$dual_enrl_hours)),
+                                     limits = c(min(hrs$dual_enrl_hours), max(hrs$dual_enrl_hours))) +
+                  scale_x_reordered() +
+                  facet_wrap(~ Cohort, scales = "free_x") +
+                  scale_fill_viridis(discrete = T), 
+                tooltip = c("tooltip")) %>% 
+                layout(title = list(y = .925, xref = "plot"), margin = list(t = 100))
+              
+            }
           
           }})
       
@@ -556,7 +575,11 @@ server =
           
           g <-
             d %>% 
-            select(-`Dual Enrollment`)
+            select(sdpsid, `Dual Enrollment`, dual_enrl_hours:`LEP Ever`,
+                   `FRPL Ever`, Female:`Other Race/Ethnicity`, Graduated:`College Enrollment`) %>% 
+            mutate(across(c(`Dual Enrollment`, District:Cohort, 
+                            `IEP Ever`:`College Enrollment`), ~ as.factor(.)),
+                   sdpsid = as.character(sdpsid))
           
           datatable(g,
                     filter = "top",
